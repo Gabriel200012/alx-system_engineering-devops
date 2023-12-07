@@ -1,32 +1,20 @@
-#!/bin/bash
-# This script displays information about subdomains
+#!/usr/bin/env bash
+# A bash script that will display information about subdomains
 
-# Define a function to get the record type and destination of a subdomain
-get_info () {
-    # Use dig command to query the DNS records of the subdomain
-    # Use awk to filter and format the output
-    dig $1 +short | awk 'NR==1 {dest=$0} END {type="A"; if (dest ~ /:/) type="AAAA"; printf "The subdomain %s is a %s record and points to %s\n", $1, type, dest}'
+subs=("www" "lb-01" "web-01" "web-02")
+
+function dns_info ()
+{
+ 	read -r -a lines < <( dig "$1" | grep -A1 'ANSWER SECTION' | grep "$1" | awk '{print $4, $5}')
+ 	echo "The subdomain ${2} is a ${lines[0]} record and points to ${lines[1]}"
 }
 
-# Check the number of arguments
-if [ $# -eq 0 ]; then
-    # No arguments provided, print usage and exit
-    echo "Usage: $0 domain [subdomain]"
-    exit 1
-elif [ $# -eq 1 ]; then
-    # Only domain argument provided, display information for default subdomains
-    domain=$1
-    get_info "www.$domain"
-    get_info "lb-01.$domain"
-    get_info "web-01.$domain"
-    get_info "web-02.$domain"
-elif [ $# -eq 2 ]; then
-    # Domain and subdomain arguments provided, display information for the specified subdomain
-    domain=$1
-    subdomain=$2
-    get_info "$subdomain.$domain"
+if [ -z "$2" ]
+then
+	for sub in "${subs[@]}"
+	do
+		dns_info "${sub}.${1}" "$sub"
+	done
 else
-    # Too many arguments provided, print usage and exit
-    echo "Usage: $0 domain [subdomain]"
-    exit 1
+	dns_info "${2}.${1}" "${2}"
 fi
